@@ -152,6 +152,43 @@
     function showApp(session){state.session=session; loginView.classList.add('hidden'); appView.classList.remove('hidden'); document.getElementById('currentUserPill').textContent=session?.user?.email||'Admin'; const hash=location.hash.replace('#',''); if(hash && document.getElementById(`view-${hash}`)) setView(hash); else setView('dashboard');}
     function showLogin(){state.session=null; appView.classList.add('hidden'); loginView.classList.remove('hidden');}
 
+    let appBooted = false;
+    let isSigningOut = false;
+
+    async function verifyCurrentUser(){
+      const {data:{user},error}=await supabaseClient.auth.getUser();
+      if(error || !user) return null;
+      return user;
+    }
+
+    async function bootAppFromSession(session){
+      if(!session || isSigningOut){
+        state.session=null;
+        showLogin();
+        return false;
+      }
+
+      const user=await verifyCurrentUser();
+
+      if(!user){
+        state.session=null;
+        showLogin();
+        return false;
+      }
+
+      state.session=session;
+      showApp(session);
+
+      const loaded=await loadAll();
+
+      if(!loaded){
+        await new Promise(resolve=>setTimeout(resolve,750));
+        await loadAll();
+      }
+
+      return true;
+    }
+
     loginForm.addEventListener('submit', async (e)=>{
       e.preventDefault();
       loginMessage.textContent='';
@@ -164,40 +201,37 @@
       appBooted=true;
       await bootAppFromSession(data.session);
     });
-    document.getElementById('signOutBtn').addEventListener('click', async ()=>{
-      const {error}=await supabaseClient.auth.signOut();
-      if(error){showToast(`Sign out failed: ${error.message}`);return;}
-      appBooted=false;
-      state.session=null; state.customers=[]; state.technicians=[]; state.jobs=[]; state.estimates=[]; state.invoices=[];
-      localStorage.clear(); sessionStorage.clear();
-      window.location.hash='';
-      showLogin();
-      showToast('Signed out');
-      setTimeout(()=>window.location.reload(),250);
-    });
-    let appBooted = false;
 
-    async function bootAppFromSession(session){
-      if(!session){
-        state.session=null;
-        showLogin();
+    document.getElementById('signOutBtn').addEventListener('click', async ()=>{
+      isSigningOut=true;
+      const {error}=await supabaseClient.auth.signOut();
+
+      if(error){
+        isSigningOut=false;
+        showToast(`Sign out failed: ${error.message}`);
         return;
       }
 
-      state.session=session;
-      showApp(session);
+      appBooted=false;
+      state.session=null;
+      state.customers=[];
+      state.technicians=[];
+      state.jobs=[];
+      state.estimates=[];
+      state.invoices=[];
 
-      await new Promise(resolve=>setTimeout(resolve,250));
-      const loaded=await loadAll();
+      window.location.hash='';
+      showLogin();
+      showToast('Signed out');
 
-      if(!loaded){
-        await new Promise(resolve=>setTimeout(resolve,750));
-        await loadAll();
-      }
-    }
+      setTimeout(()=>{
+        isSigningOut=false;
+        window.location.reload();
+      },250);
+    });
 
     supabaseClient.auth.onAuthStateChange(async (event, session)=>{
-      console.log('Auth event:', event);
+      if(isSigningOut) return;
 
       if(event==='SIGNED_OUT'){
         appBooted=false;
@@ -211,7 +245,7 @@
         return;
       }
 
-      if(session && !appBooted){
+      if((event==='INITIAL_SESSION' || event==='SIGNED_IN' || event==='TOKEN_REFRESHED') && session && !appBooted){
         appBooted=true;
         await bootAppFromSession(session);
       }
@@ -219,14 +253,10 @@
 
     async function loadAll(){
       try{
-        const {data:{session},error:sessionError}=await supabaseClient.auth.getSession();
+        const user=await verifyCurrentUser();
 
-        if(sessionError){
-          showToast(`Session error: ${sessionError.message}`);
-          return false;
-        }
-
-        if(!session){
+        if(!user){
+          state.session=null;
           showLogin();
           return false;
         }
@@ -247,15 +277,17 @@
         if(e4){showToast(`Estimates error: ${e4.message}`); hasError=true;}
         if(e5){showToast(`Invoices error: ${e5.message}`); hasError=true;}
 
-        state.customers=customers||[];
-        state.technicians=technicians||[];
-        state.jobs=jobs||[];
-        state.estimates=estimates||[];
-        state.invoices=invoices||[];
+        if(hasError) return false;
+
+        state.customers=Array.isArray(customers)?customers:[];
+        state.technicians=Array.isArray(technicians)?technicians:[];
+        state.jobs=Array.isArray(jobs)?jobs:[];
+        state.estimates=Array.isArray(estimates)?estimates:[];
+        state.invoices=Array.isArray(invoices)?invoices:[];
 
         renderAll();
 
-        return !hasError;
+        return true;
       }catch(error){
         console.error('loadAll failed:', error);
         showToast(`Load error: ${error.message}`);
