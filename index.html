@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Common Sense Plumbing Operations Platform</title>
   <meta name="description" content="Common Sense Plumbing operations platform connected to Supabase with admin login and live CRUD." />
-  <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
@@ -106,7 +105,7 @@
           <section class="view" id="view-customers"><article class="card card-pad"><div class="toolbar"><div><h2>Customers & CRM</h2><p class="muted">Create, edit, and delete customer records.</p></div><div class="button-row"><button class="btn btn-primary" data-open-modal="customer">Add customer</button></div></div><div class="table-wrap"><table><thead><tr><th>Name</th><th>Type</th><th>Contact</th><th>City</th><th>Since</th><th>Actions</th></tr></thead><tbody id="customersRows"></tbody></table></div></article></section>
           <section class="view" id="view-estimates"><article class="card card-pad"><div class="toolbar"><div><h2>Estimates</h2><p class="muted">Live estimate records.</p></div><div class="button-row"><button class="btn btn-primary" data-open-modal="estimate">Add estimate</button></div></div><div class="table-wrap"><table><thead><tr><th>ID</th><th>Customer</th><th>Scope</th><th>Total</th><th>Status</th><th>Actions</th></tr></thead><tbody id="estimatesRows"></tbody></table></div></article></section>
           <section class="view" id="view-invoices"><article class="card card-pad"><div class="toolbar"><div><h2>Invoices</h2><p class="muted">Live invoice records.</p></div><div class="button-row"><button class="btn btn-primary" data-open-modal="invoice">Add invoice</button></div></div><div class="table-wrap"><table><thead><tr><th>ID</th><th>Customer</th><th>Total</th><th>Due date</th><th>Status</th><th>Actions</th></tr></thead><tbody id="invoicesRows"></tbody></table></div></article></section>
-          <section class="view" id="view-technicians"><div class="grid-3" id="techCards"></div></section>
+          <section class="view" id="view-technicians"><article class="card card-pad"><div class="toolbar"><div><h2>Technicians</h2><p class="muted">Create, edit, and manage technician records.</p></div><div class="button-row"><button class="btn btn-primary" data-open-modal="technician">Add technician</button></div></div><div class="grid-3" id="techCards"></div></article></section>
           <section class="view" id="view-reports"><div class="grid-2"><article class="card card-pad"><div class="section-title"><div><h2>Reports</h2><p>Live totals from current records.</p></div></div><div class="list" id="reportsList"></div></article><article class="card card-pad"><div class="section-title"><div><h2>Snapshot</h2><p>Office metrics</p></div></div><div class="stats" style="grid-template-columns:1fr 1fr" id="reportStats"></div></article></div></section>
         </div>
       </main>
@@ -138,7 +137,13 @@
     const toast=document.getElementById('toast');
     let activeModal=null, editingId=null;
     const subtitles={dashboard:'Live operational data from Supabase.',dispatch:'Assign jobs to technicians and manage scheduling windows.',jobs:'Track work orders, materials, and job status.',customers:'Customer records, history, estimates, and billing.',estimates:'Prepare scopes, send pricing, and convert approvals to invoices.',invoices:'Monitor billing, due dates, and payment collection.',technicians:'Utilization, workload, and assignment visibility.',reports:'Revenue, conversion, and service performance snapshots.'};
-    const schemas={customer:[{name:'name',label:'Name',type:'text',required:true},{name:'type',label:'Type',type:'select',options:['Commercial','Residential'],required:true},{name:'contact',label:'Contact',type:'text',required:true},{name:'phone',label:'Phone',type:'text',required:true},{name:'city',label:'City',type:'text',required:true},{name:'since',label:'Customer since',type:'date',required:true}],job:[{name:'number',label:'Job number',type:'text',required:true},{name:'description',label:'Description',type:'text',required:true},{name:'customer_id',label:'Customer',type:'select-customers',required:true},{name:'technician_id',label:'Technician',type:'select-technicians'},{name:'date',label:'Date',type:'date',required:true},{name:'window',label:'Time window',type:'text',required:true},{name:'priority',label:'Priority',type:'select',options:['Routine','Medium','High','Emergency'],required:true},{name:'status',label:'Status',type:'select',options:['scheduled','in progress','needs technician','completed','cancelled'],required:true},{name:'city',label:'City',type:'text',required:true}],estimate:[{name:'number',label:'Estimate ID',type:'text',required:true},{name:'customer_id',label:'Customer',type:'select-customers',required:true},{name:'scope',label:'Scope',type:'text',required:true},{name:'total',label:'Total',type:'number',required:true},{name:'status',label:'Status',type:'select',options:['draft','sent','approved','declined'],required:true}],invoice:[{name:'number',label:'Invoice ID',type:'text',required:true},{name:'customer_id',label:'Customer',type:'select-customers',required:true},{name:'total',label:'Total',type:'number',required:true},{name:'due_date',label:'Due date',type:'date',required:true},{name:'status',label:'Status',type:'select',options:['draft','sent','overdue','paid'],required:true}]};
+    const schemas={
+      customer:[{name:'name',label:'Name',type:'text',required:true},{name:'type',label:'Type',type:'select',options:['Commercial','Residential'],required:true},{name:'contact',label:'Contact',type:'text',required:true},{name:'phone',label:'Phone',type:'text',required:true},{name:'city',label:'City',type:'text',required:true},{name:'since',label:'Customer since',type:'date',required:true}],
+      job:[{name:'number',label:'Job number',type:'text',required:true},{name:'description',label:'Description',type:'text',required:true},{name:'customer_id',label:'Customer',type:'select-customers',required:true},{name:'technician_id',label:'Technician',type:'select-technicians'},{name:'date',label:'Date',type:'date',required:true},{name:'window',label:'Time window',type:'text',required:true},{name:'priority',label:'Priority',type:'select',options:['Routine','Medium','High','Emergency'],required:true},{name:'status',label:'Status',type:'select',options:['scheduled','in progress','needs technician','completed','cancelled'],required:true},{name:'city',label:'City',type:'text',required:true}],
+      estimate:[{name:'number',label:'Estimate ID',type:'text',required:true},{name:'customer_id',label:'Customer',type:'select-customers',required:true},{name:'scope',label:'Scope',type:'text',required:true},{name:'total',label:'Total',type:'number',required:true},{name:'status',label:'Status',type:'select',options:['draft','sent','approved','declined'],required:true}],
+      invoice:[{name:'number',label:'Invoice ID',type:'text',required:true},{name:'customer_id',label:'Customer',type:'select-customers',required:true},{name:'total',label:'Total',type:'number',required:true},{name:'due_date',label:'Due date',type:'date',required:true},{name:'status',label:'Status',type:'select',options:['draft','sent','overdue','paid'],required:true}],
+      technician:[{name:'name',label:'Name',type:'text',required:true},{name:'role',label:'Role',type:'text',required:true}]
+    };
     const byId=(arr,id)=>arr.find(item=>item.id===id); const customerName=id=>byId(state.customers,id)?.name||'Unknown customer'; const technicianName=id=>byId(state.technicians,id)?.name||'Unassigned'; const money=n=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(Number(n)||0); const showToast=msg=>{toast.textContent=msg;toast.classList.add('show');clearTimeout(showToast.t);showToast.t=setTimeout(()=>toast.classList.remove('show'),2200)}; const badgeClass=s=>String(s).toLowerCase().replace(/\s+/g,'-');
     function setView(name){views.forEach(v=>v.classList.toggle('active',v.id===`view-${name}`));navButtons.forEach(b=>b.classList.toggle('active',b.dataset.view===name));pageTitle.textContent=name.charAt(0).toUpperCase()+name.slice(1);pageSubtitle.textContent=subtitles[name]||'';location.hash=name;if(window.innerWidth<=1060)sidebar.classList.remove('open');}
     navButtons.forEach(btn=>btn.addEventListener('click',()=>setView(btn.dataset.view))); document.querySelectorAll('[data-jump]').forEach(btn=>btn.addEventListener('click',()=>setView(btn.dataset.jump))); document.getElementById('menuBtn').addEventListener('click',()=>sidebar.classList.toggle('open'));
@@ -148,7 +153,16 @@
     function showLogin(){state.session=null; appView.classList.add('hidden'); loginView.classList.remove('hidden');}
 
     loginForm.addEventListener('submit', async (e)=>{e.preventDefault(); loginMessage.textContent=''; const fd=Object.fromEntries(new FormData(loginForm).entries()); const {data,error}=await supabaseClient.auth.signInWithPassword({email:fd.email,password:fd.password}); if(error){loginMessage.textContent=error.message; return;} showApp(data.session); await loadAll();});
-    document.getElementById('signOutBtn').addEventListener('click', async ()=>{await supabaseClient.auth.signOut(); showLogin(); showToast('Signed out');});
+    document.getElementById('signOutBtn').addEventListener('click', async ()=>{
+      const {error}=await supabaseClient.auth.signOut();
+      if(error){showToast(`Sign out failed: ${error.message}`);return;}
+      state.session=null; state.customers=[]; state.technicians=[]; state.jobs=[]; state.estimates=[]; state.invoices=[];
+      localStorage.clear(); sessionStorage.clear();
+      window.location.hash='';
+      showLogin();
+      showToast('Signed out');
+      setTimeout(()=>window.location.reload(),250);
+    });
     supabaseClient.auth.onAuthStateChange(async (event, session)=>{ if(session){showApp(session); await loadAll();} else {showLogin();} });
 
     async function loadAll(){
@@ -159,8 +173,19 @@
         supabaseClient.from('estimates').select('*').order('created_at',{ascending:false}),
         supabaseClient.from('invoices').select('*').order('created_at',{ascending:false})
       ]);
-      const err=e1||e2||e3||e4||e5; if(err){showToast(err.message); return;}
-      state.customers=customers||[]; state.technicians=technicians||[]; state.jobs=jobs||[]; state.estimates=estimates||[]; state.invoices=invoices||[]; renderAll();
+
+      if(e1) showToast(`Customers error: ${e1.message}`);
+      if(e2) showToast(`Technicians error: ${e2.message}`);
+      if(e3) showToast(`Jobs error: ${e3.message}`);
+      if(e4) showToast(`Estimates error: ${e4.message}`);
+      if(e5) showToast(`Invoices error: ${e5.message}`);
+
+      state.customers=customers||[];
+      state.technicians=technicians||[];
+      state.jobs=jobs||[];
+      state.estimates=estimates||[];
+      state.invoices=invoices||[];
+      renderAll();
     }
 
     function renderStats(){const openJobs=state.jobs.filter(j=>!['completed','cancelled'].includes(j.status)).length; const unpaid=state.invoices.filter(i=>i.status!=='paid').reduce((s,i)=>s+Number(i.total||0),0); const approved=state.estimates.filter(e=>e.status==='approved').length; const util=Math.round((state.jobs.filter(j=>j.technician_id).length/Math.max(state.jobs.length,1))*100); document.getElementById('statsGrid').innerHTML=`<div class="stat"><div class="stat-label">Open jobs</div><div class="stat-value mono">${openJobs}</div><div class="stat-note">From current job records</div></div><div class="stat"><div class="stat-label">Unpaid invoices</div><div class="stat-value mono">${money(unpaid)}</div><div class="stat-note">Sent and overdue totals</div></div><div class="stat"><div class="stat-label">Approved estimates</div><div class="stat-value mono">${approved}</div><div class="stat-note">Ready to convert</div></div><div class="stat"><div class="stat-label">Technician coverage</div><div class="stat-value mono">${util}%</div><div class="stat-note">Jobs with assigned techs</div></div>`; document.getElementById('dashboardLive').innerHTML=`<div class="list-item"><strong>${state.jobs.length} total jobs</strong><span class="muted">${state.jobs.filter(j=>j.status==='needs technician').length} still need assignment.</span></div><div class="list-item"><strong>${state.estimates.length} estimates</strong><span class="muted">${state.estimates.filter(e=>e.status==='sent').length} are awaiting customer response.</span></div><div class="list-item"><strong>${state.invoices.length} invoices</strong><span class="muted">${state.invoices.filter(i=>i.status==='overdue').length} are overdue.</span></div><div class="list-item"><strong>${state.customers.length} customers</strong><span class="muted">Residential and commercial records are editable below.</span></div>`;}
@@ -170,28 +195,76 @@
     function renderJobs(){document.getElementById('jobsRows').innerHTML=state.jobs.map(j=>`<tr><td>${j.number}</td><td>${j.description}</td><td>${customerName(j.customer_id)}</td><td>${technicianName(j.technician_id)}</td><td>${j.date}</td><td><span class="badge ${badgeClass(j.status)}">${j.status}</span></td><td><div class="actions"><button class="btn btn-secondary" onclick="openModal('job','${j.id}')">Edit</button><button class="btn btn-danger" onclick="removeRecord('job','${j.id}')">Delete</button></div></td></tr>`).join('')||`<tr><td colspan="7"><div class="empty">No jobs yet.</div></td></tr>`;}
     function renderEstimates(){document.getElementById('estimatesRows').innerHTML=state.estimates.map(e=>`<tr><td>${e.number}</td><td>${customerName(e.customer_id)}</td><td>${e.scope}</td><td class="mono">${money(e.total)}</td><td><span class="badge ${badgeClass(e.status)}">${e.status}</span></td><td><div class="actions"><button class="btn btn-secondary" onclick="openModal('estimate','${e.id}')">Edit</button><button class="btn btn-danger" onclick="removeRecord('estimate','${e.id}')">Delete</button></div></td></tr>`).join('')||`<tr><td colspan="6"><div class="empty">No estimates yet.</div></td></tr>`;}
     function renderInvoices(){document.getElementById('invoicesRows').innerHTML=state.invoices.map(i=>`<tr><td>${i.number}</td><td>${customerName(i.customer_id)}</td><td class="mono">${money(i.total)}</td><td>${i.due_date}</td><td><span class="badge ${badgeClass(i.status)}">${i.status}</span></td><td><div class="actions"><button class="btn btn-secondary" onclick="openModal('invoice','${i.id}')">Edit</button><button class="btn btn-danger" onclick="removeRecord('invoice','${i.id}')">Delete</button></div></td></tr>`).join('')||`<tr><td colspan="6"><div class="empty">No invoices yet.</div></td></tr>`;}
-    function renderTechs(){document.getElementById('techCards').innerHTML=state.technicians.map(t=>{const count=state.jobs.filter(j=>j.technician_id===t.id).length; const util=Math.min(100,Math.round((count/Math.max(state.jobs.length,1))*100*3)); return `<article class="card card-pad"><div class="section-title"><h2>${t.name}</h2><p>${t.role}</p></div><div class="stat-value mono">${util}%</div><p class="muted">${count} assigned jobs from current records.</p></article>`}).join('')||'<div class="empty">No technicians yet.</div>';}
+    function renderTechs(){
+      document.getElementById('techCards').innerHTML=state.technicians.map(t=>{
+        const count=state.jobs.filter(j=>j.technician_id===t.id).length;
+        const util=Math.min(100,Math.round((count/Math.max(state.jobs.length,1))*100*3));
+        return `<article class="card card-pad"><div class="section-title"><div><h2>${t.name}</h2><p>${t.role}</p></div><div class="actions"><button class="btn btn-secondary" onclick="openModal('technician','${t.id}')">Edit</button><button class="btn btn-danger" onclick="removeRecord('technician','${t.id}')">Delete</button></div></div><div class="stat-value mono">${util}%</div><p class="muted">${count} assigned jobs from current records.</p></article>`;
+      }).join('')||'<div class="empty">No technicians yet.</div>';
+    }
     function renderReports(){const totalRevenue=state.invoices.reduce((s,i)=>s+Number(i.total||0),0); const paidRevenue=state.invoices.filter(i=>i.status==='paid').reduce((s,i)=>s+Number(i.total||0),0); const avgTicket=state.invoices.length?Math.round(totalRevenue/state.invoices.length):0; const conversion=state.estimates.length?Math.round((state.estimates.filter(e=>e.status==='approved').length/state.estimates.length)*100):0; document.getElementById('reportsList').innerHTML=`<div class="list-item"><strong>Customers by revenue</strong><span class="muted">Total invoice value ${money(totalRevenue)} across ${state.invoices.length} invoices.</span></div><div class="list-item"><strong>Technician utilization</strong><span class="muted">${state.jobs.filter(j=>j.technician_id).length} of ${state.jobs.length} jobs have a technician assigned.</span></div><div class="list-item"><strong>Jobs completed</strong><span class="muted">${state.jobs.filter(j=>j.status==='completed').length} marked completed.</span></div><div class="list-item"><strong>Estimate conversion</strong><span class="muted">${conversion}% approved.</span></div>`; document.getElementById('reportStats').innerHTML=`<div class="stat"><div class="stat-label">Avg ticket</div><div class="stat-value mono">${money(avgTicket)}</div></div><div class="stat"><div class="stat-label">Paid revenue</div><div class="stat-value mono">${money(paidRevenue)}</div></div><div class="stat"><div class="stat-label">Customers</div><div class="stat-value mono">${state.customers.length}</div></div><div class="stat"><div class="stat-label">Open callbacks</div><div class="stat-value mono">${state.jobs.filter(j=>j.status==='needs technician').length}</div></div>`;}
     function renderAll(){renderStats();renderDashboardDispatch();renderDispatch();renderCustomers();renderJobs();renderEstimates();renderInvoices();renderTechs();renderReports();}
 
-    function getCollection(type){return type==='customer'?state.customers:type==='job'?state.jobs:type==='estimate'?state.estimates:state.invoices}
+    function getCollection(type){
+      return type==='customer'?state.customers:
+        type==='job'?state.jobs:
+        type==='estimate'?state.estimates:
+        type==='invoice'?state.invoices:
+        type==='technician'?state.technicians:[];
+    }
     function createSelect(field,value=''){const opts=field.type==='select-customers'?state.customers.map(c=>`<option value="${c.id}" ${c.id===value?'selected':''}>${c.name}</option>`).join(''):field.type==='select-technicians'?`<option value="">Unassigned</option>`+state.technicians.map(t=>`<option value="${t.id}" ${t.id===value?'selected':''}>${t.name}</option>`).join(''):field.options.map(o=>`<option value="${o}" ${o===value?'selected':''}>${o}</option>`).join(''); return `<label>${field.label}<select name="${field.name}" ${field.required?'required':''}>${opts}</select></label>`}
-    function openModal(type,id=''){activeModal=type; editingId=id||null; modalBackdrop.classList.add('show'); modalBackdrop.setAttribute('aria-hidden','false'); modalTitle.textContent=`${editingId?'Edit':'Add'} ${type}`; modalSubtitle.textContent=`${editingId?'Update':'Create'} ${type} record.`; const record=editingId?getCollection(type).find(r=>r.id===editingId):{}; recordForm.innerHTML=schemas[type].map(field=>{const value=record?.[field.name]??''; if(field.type.startsWith('select')) return createSelect(field,value); return `<label>${field.label}<input name="${field.name}" type="${field.type}" value="${value}" ${field.required?'required':''}></label>`}).join('')+`<div class="button-row" style="grid-column:1 / -1;margin-top:0"><button class="btn btn-primary" type="submit">Save ${type}</button>${editingId?`<button class="btn btn-danger" type="button" onclick="removeRecord('${type}','${editingId}');closeModal()">Delete</button>`:''}</div>`;}
+    function openModal(type,id=''){
+      if(!schemas[type]){showToast(`Unknown form type: ${type}`);return;}
+      activeModal=type; editingId=id||null;
+      modalBackdrop.classList.add('show'); modalBackdrop.setAttribute('aria-hidden','false');
+      modalTitle.textContent=`${editingId?'Edit':'Add'} ${type}`;
+      modalSubtitle.textContent=`${editingId?'Update':'Create'} ${type} record.`;
+      const record=editingId?getCollection(type).find(r=>r.id===editingId):{};
+      recordForm.innerHTML=schemas[type].map(field=>{
+        const value=record?.[field.name]??'';
+        if(field.type.startsWith('select')) return createSelect(field,value);
+        return `<label>${field.label}<input name="${field.name}" type="${field.type}" value="${String(value).replaceAll('"','&quot;')}" ${field.required?'required':''}></label>`;
+      }).join('')+`<div class="button-row" style="grid-column:1 / -1;margin-top:0"><button class="btn btn-primary" type="submit">Save ${type}</button>${editingId?`<button class="btn btn-danger" type="button" onclick="removeRecord('${type}','${editingId}');closeModal()">Delete</button>`:''}</div>`;
+    }
     function closeModal(){modalBackdrop.classList.remove('show');modalBackdrop.setAttribute('aria-hidden','true');recordForm.innerHTML='';activeModal=null;editingId=null}
     document.getElementById('closeModal').addEventListener('click',closeModal); modalBackdrop.addEventListener('click',e=>{if(e.target===modalBackdrop)closeModal()}); document.querySelectorAll('[data-open-modal]').forEach(btn=>btn.addEventListener('click',()=>openModal(btn.dataset.openModal)));
     window.openModal=openModal;
 
     async function saveRecord(type,payload,id){
-      const table=type==='customer'?'customers':type==='job'?'jobs':type==='estimate'?'estimates':'invoices';
+      const table=type==='customer'?'customers':
+        type==='job'?'jobs':
+        type==='estimate'?'estimates':
+        type==='invoice'?'invoices':
+        type==='technician'?'technicians':null;
+
+      if(!table){showToast(`Unknown record type: ${type}`); return false;}
       if('total' in payload) payload.total=Number(payload.total);
+      if('technician_id' in payload && payload.technician_id==='') payload.technician_id=null;
+
       const query = id ? supabaseClient.from(table).update(payload).eq('id',id) : supabaseClient.from(table).insert(payload);
-      const {error}=await query; if(error){showToast(error.message); return false;} showToast(`${type} saved`); await loadAll(); return true;
+      const {error}=await query;
+      if(error){showToast(error.message); return false;}
+      showToast(`${type} saved`);
+      await loadAll();
+      return true;
     }
-    async function removeRecord(type,id){const table=type==='customer'?'customers':type==='job'?'jobs':type==='estimate'?'estimates':'invoices'; const {error}=await supabaseClient.from(table).delete().eq('id',id); if(error){showToast(error.message); return;} showToast(`${type} deleted`); await loadAll();}
+    async function removeRecord(type,id){
+      const table=type==='customer'?'customers':
+        type==='job'?'jobs':
+        type==='estimate'?'estimates':
+        type==='invoice'?'invoices':
+        type==='technician'?'technicians':null;
+
+      if(!table){showToast(`Unknown record type: ${type}`); return;}
+      const {error}=await supabaseClient.from(table).delete().eq('id',id);
+      if(error){showToast(error.message); return;}
+      showToast(`${type} deleted`);
+      await loadAll();
+    }
     window.removeRecord=removeRecord;
 
     recordForm.addEventListener('submit', async (e)=>{e.preventDefault(); if(!activeModal) return; const payload=Object.fromEntries(new FormData(recordForm).entries()); const ok=await saveRecord(activeModal,payload,editingId); if(ok) closeModal();});
-    document.getElementById('quickJobForm').addEventListener('submit', async (e)=>{e.preventDefault(); const fd=Object.fromEntries(new FormData(e.target).entries()); const customer=byId(state.customers,fd.customer_id); const number=String(Date.now()).slice(-4); const payload={number,description:fd.description,customer_id:fd.customer_id,technician_id:fd.technician_id||null,date:fd.date,window:fd.window,priority:fd.priority,status:fd.status,city:customer?.city||'Austin'}; const {error}=await supabaseClient.from('jobs').insert(payload); if(error){showToast(error.message); return;} e.target.reset(); showToast('Dispatch job created'); await loadAll();});
+    document.getElementById('quickJobForm').addEventListener('submit', async (e)=>{e.preventDefault(); const fd=Object.fromEntries(new FormData(e.target).entries()); const customer=byId(state.customers,fd.customer_id); const number=`JOB-${Date.now()}`; const payload={number,description:fd.description,customer_id:fd.customer_id,technician_id:fd.technician_id||null,date:fd.date,window:fd.window,priority:fd.priority,status:fd.status,city:customer?.city||'Austin'}; const {error}=await supabaseClient.from('jobs').insert(payload); if(error){showToast(error.message); return;} e.target.reset(); showToast('Dispatch job created'); await loadAll();});
 
     (async function init(){const {data:{session}}=await supabaseClient.auth.getSession(); if(session){showApp(session); await loadAll();} else {showLogin();}})();
   </script>
