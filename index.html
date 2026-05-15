@@ -152,10 +152,22 @@
     function showApp(session){state.session=session; loginView.classList.add('hidden'); appView.classList.remove('hidden'); document.getElementById('currentUserPill').textContent=session?.user?.email||'Admin'; const hash=location.hash.replace('#',''); if(hash && document.getElementById(`view-${hash}`)) setView(hash); else setView('dashboard');}
     function showLogin(){state.session=null; appView.classList.add('hidden'); loginView.classList.remove('hidden');}
 
-    loginForm.addEventListener('submit', async (e)=>{e.preventDefault(); loginMessage.textContent=''; const fd=Object.fromEntries(new FormData(loginForm).entries()); const {data,error}=await supabaseClient.auth.signInWithPassword({email:fd.email,password:fd.password}); if(error){loginMessage.textContent=error.message; return;} showApp(data.session); await loadAll();});
+    loginForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      loginMessage.textContent='';
+      const fd=Object.fromEntries(new FormData(loginForm).entries());
+      const {data,error}=await supabaseClient.auth.signInWithPassword({email:fd.email,password:fd.password});
+      if(error){
+        loginMessage.textContent=error.message;
+        return;
+      }
+      appBooted=true;
+      await bootAppFromSession(data.session);
+    });
     document.getElementById('signOutBtn').addEventListener('click', async ()=>{
       const {error}=await supabaseClient.auth.signOut();
       if(error){showToast(`Sign out failed: ${error.message}`);return;}
+      appBooted=false;
       state.session=null; state.customers=[]; state.technicians=[]; state.jobs=[]; state.estimates=[]; state.invoices=[];
       localStorage.clear(); sessionStorage.clear();
       window.location.hash='';
@@ -163,29 +175,92 @@
       showToast('Signed out');
       setTimeout(()=>window.location.reload(),250);
     });
-    supabaseClient.auth.onAuthStateChange(async (event, session)=>{ if(session){showApp(session); await loadAll();} else {showLogin();} });
+    let appBooted = false;
+
+    async function bootAppFromSession(session){
+      if(!session){
+        state.session=null;
+        showLogin();
+        return;
+      }
+
+      state.session=session;
+      showApp(session);
+
+      await new Promise(resolve=>setTimeout(resolve,250));
+      const loaded=await loadAll();
+
+      if(!loaded){
+        await new Promise(resolve=>setTimeout(resolve,750));
+        await loadAll();
+      }
+    }
+
+    supabaseClient.auth.onAuthStateChange(async (event, session)=>{
+      console.log('Auth event:', event);
+
+      if(event==='SIGNED_OUT'){
+        appBooted=false;
+        state.session=null;
+        state.customers=[];
+        state.technicians=[];
+        state.jobs=[];
+        state.estimates=[];
+        state.invoices=[];
+        showLogin();
+        return;
+      }
+
+      if(session && !appBooted){
+        appBooted=true;
+        await bootAppFromSession(session);
+      }
+    });
 
     async function loadAll(){
-      const [{data:customers,error:e1},{data:technicians,error:e2},{data:jobs,error:e3},{data:estimates,error:e4},{data:invoices,error:e5}] = await Promise.all([
-        supabaseClient.from('customers').select('*').order('created_at',{ascending:false}),
-        supabaseClient.from('technicians').select('*').order('created_at',{ascending:false}),
-        supabaseClient.from('jobs').select('*').order('created_at',{ascending:false}),
-        supabaseClient.from('estimates').select('*').order('created_at',{ascending:false}),
-        supabaseClient.from('invoices').select('*').order('created_at',{ascending:false})
-      ]);
+      try{
+        const {data:{session},error:sessionError}=await supabaseClient.auth.getSession();
 
-      if(e1) showToast(`Customers error: ${e1.message}`);
-      if(e2) showToast(`Technicians error: ${e2.message}`);
-      if(e3) showToast(`Jobs error: ${e3.message}`);
-      if(e4) showToast(`Estimates error: ${e4.message}`);
-      if(e5) showToast(`Invoices error: ${e5.message}`);
+        if(sessionError){
+          showToast(`Session error: ${sessionError.message}`);
+          return false;
+        }
 
-      state.customers=customers||[];
-      state.technicians=technicians||[];
-      state.jobs=jobs||[];
-      state.estimates=estimates||[];
-      state.invoices=invoices||[];
-      renderAll();
+        if(!session){
+          showLogin();
+          return false;
+        }
+
+        const [{data:customers,error:e1},{data:technicians,error:e2},{data:jobs,error:e3},{data:estimates,error:e4},{data:invoices,error:e5}] = await Promise.all([
+          supabaseClient.from('customers').select('*').order('created_at',{ascending:false}),
+          supabaseClient.from('technicians').select('*').order('created_at',{ascending:false}),
+          supabaseClient.from('jobs').select('*').order('created_at',{ascending:false}),
+          supabaseClient.from('estimates').select('*').order('created_at',{ascending:false}),
+          supabaseClient.from('invoices').select('*').order('created_at',{ascending:false})
+        ]);
+
+        let hasError=false;
+
+        if(e1){showToast(`Customers error: ${e1.message}`); hasError=true;}
+        if(e2){showToast(`Technicians error: ${e2.message}`); hasError=true;}
+        if(e3){showToast(`Jobs error: ${e3.message}`); hasError=true;}
+        if(e4){showToast(`Estimates error: ${e4.message}`); hasError=true;}
+        if(e5){showToast(`Invoices error: ${e5.message}`); hasError=true;}
+
+        state.customers=customers||[];
+        state.technicians=technicians||[];
+        state.jobs=jobs||[];
+        state.estimates=estimates||[];
+        state.invoices=invoices||[];
+
+        renderAll();
+
+        return !hasError;
+      }catch(error){
+        console.error('loadAll failed:', error);
+        showToast(`Load error: ${error.message}`);
+        return false;
+      }
     }
 
     function renderStats(){const openJobs=state.jobs.filter(j=>!['completed','cancelled'].includes(j.status)).length; const unpaid=state.invoices.filter(i=>i.status!=='paid').reduce((s,i)=>s+Number(i.total||0),0); const approved=state.estimates.filter(e=>e.status==='approved').length; const util=Math.round((state.jobs.filter(j=>j.technician_id).length/Math.max(state.jobs.length,1))*100); document.getElementById('statsGrid').innerHTML=`<div class="stat"><div class="stat-label">Open jobs</div><div class="stat-value mono">${openJobs}</div><div class="stat-note">From current job records</div></div><div class="stat"><div class="stat-label">Unpaid invoices</div><div class="stat-value mono">${money(unpaid)}</div><div class="stat-note">Sent and overdue totals</div></div><div class="stat"><div class="stat-label">Approved estimates</div><div class="stat-value mono">${approved}</div><div class="stat-note">Ready to convert</div></div><div class="stat"><div class="stat-label">Technician coverage</div><div class="stat-value mono">${util}%</div><div class="stat-note">Jobs with assigned techs</div></div>`; document.getElementById('dashboardLive').innerHTML=`<div class="list-item"><strong>${state.jobs.length} total jobs</strong><span class="muted">${state.jobs.filter(j=>j.status==='needs technician').length} still need assignment.</span></div><div class="list-item"><strong>${state.estimates.length} estimates</strong><span class="muted">${state.estimates.filter(e=>e.status==='sent').length} are awaiting customer response.</span></div><div class="list-item"><strong>${state.invoices.length} invoices</strong><span class="muted">${state.invoices.filter(i=>i.status==='overdue').length} are overdue.</span></div><div class="list-item"><strong>${state.customers.length} customers</strong><span class="muted">Residential and commercial records are editable below.</span></div>`;}
@@ -266,7 +341,22 @@
     recordForm.addEventListener('submit', async (e)=>{e.preventDefault(); if(!activeModal) return; const payload=Object.fromEntries(new FormData(recordForm).entries()); const ok=await saveRecord(activeModal,payload,editingId); if(ok) closeModal();});
     document.getElementById('quickJobForm').addEventListener('submit', async (e)=>{e.preventDefault(); const fd=Object.fromEntries(new FormData(e.target).entries()); const customer=byId(state.customers,fd.customer_id); const number=`JOB-${Date.now()}`; const payload={number,description:fd.description,customer_id:fd.customer_id,technician_id:fd.technician_id||null,date:fd.date,window:fd.window,priority:fd.priority,status:fd.status,city:customer?.city||'Austin'}; const {error}=await supabaseClient.from('jobs').insert(payload); if(error){showToast(error.message); return;} e.target.reset(); showToast('Dispatch job created'); await loadAll();});
 
-    (async function init(){const {data:{session}}=await supabaseClient.auth.getSession(); if(session){showApp(session); await loadAll();} else {showLogin();}})();
+    (async function init(){
+      const {data:{session},error}=await supabaseClient.auth.getSession();
+
+      if(error){
+        showToast(`Session error: ${error.message}`);
+        showLogin();
+        return;
+      }
+
+      if(session){
+        appBooted=true;
+        await bootAppFromSession(session);
+      }else{
+        showLogin();
+      }
+    })();
   </script>
 </body>
 </html>
